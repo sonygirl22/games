@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Study Break — Minesweeper</title>
+<style>
+  :root{
+    --bg:#0b0f14; --surface:#0f141b; --card:#121923; --text:#e6edf3; --muted:#9fb0c0;
+    --accent:#16a34a; --accent-2:#22c55e; --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --cell:#0f141b; --cell2:#0d1218; --grid: color-mix(in oklab, var(--text) 10%, transparent);
+    --flag:#eab308; --mine:#ef4444; --ring:0 0 0 .12rem color-mix(in oklab, var(--accent) 60%, transparent), 0 10px 26px rgba(34,197,94,.18);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f6f8fc; --surface:#ffffff; --card:#f3f6fb; --text:#0b1220; --muted:#4b5a6a; --cell:#ffffff; --cell2:#f3f6fb;
+      --shadow:0 10px 30px rgba(0,0,0,.08); --grid: color-mix(in oklab, var(--text) 12%, transparent);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:
+      radial-gradient(1000px 600px at -10% 10%, rgba(34,197,94,.12), transparent 40%),
+      radial-gradient(900px 500px at 110% 0%, rgba(22,163,74,.12), transparent 40%),
+      var(--bg);
+    color:var(--text); line-height:1.55;
+  }
+  a{color:inherit; text-decoration:none}
+  .container{max-width:1000px; margin:0 auto; padding:16px 20px}
+  header{position:sticky; top:0; z-index:20; backdrop-filter:saturate(140%) blur(10px);
+    background:color-mix(in oklab, var(--surface) 75%, transparent);
+    border-bottom:1px solid color-mix(in oklab, var(--text) 12%, transparent);
+  }
+  .nav{display:flex; align-items:center; justify-content:space-between; height:64px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:800}
+  .badge{width:32px; height:32px; border-radius:10px; display:grid; place-items:center;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow:var(--shadow)}
+  .btn{
+    appearance:none; border:0; cursor:pointer; font-weight:800; padding:10px 14px; border-radius:12px;
+    background: var(--accent); color:white; box-shadow: var(--ring); transition: transform .08s ease;
+  }
+  .btn:hover{transform: translateY(-1px)}
+  .btn.secondary{background: color-mix(in oklab, var(--text) 8%, transparent); color:var(--text); box-shadow:none; border:1px solid color-mix(in oklab, var(--text) 12%, transparent)}
+  .muted{color:var(--muted)}
+  main{padding:22px 0}
+
+  /* Board wrapper */
+  .panel{
+    background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), var(--card));
+    border:1px solid color-mix(in oklab, var(--text) 12%, transparent);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:14px;
+  }
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .stats{display:flex; align-items:center; gap:12px; font-weight:800}
+  .counter{
+    min-width:82px; text-align:center; padding:8px 10px; border-radius:10px;
+    background:color-mix(in oklab, var(--cell2) 100%, transparent);
+    border:1px solid var(--grid); font-variant-numeric:tabular-nums;
+  }
+  .select{
+    padding:10px 12px; border-radius:12px; border:1px solid color-mix(in oklab, var(--text) 14%, transparent);
+    background:var(--surface); color:var(--text);
+  }
+  .board{
+    margin-top:12px; display:grid; justify-content:center; user-select:none; touch-action:manipulation;
+    border:1px solid var(--grid); border-radius:12px; overflow:hidden; background:var(--cell2);
+  }
+  .cell{
+    width:36px; height:36px; display:grid; place-items:center; font-weight:800; font-size:16px;
+    border:1px solid var(--grid);
+    background:var(--cell);
+    transition: background .08s ease, transform .05s ease;
+  }
+  .cell:focus{outline:2px solid color-mix(in oklab, var(--accent) 60%, transparent)}
+  .cell.revealed{background: color-mix(in oklab, var(--cell) 70%, white 10%);}
+  .cell.flag::after{content:"⚑"; color:var(--flag)}
+  .cell.mine.revealed{background: color-mix(in oklab, var(--mine) 20%, var(--cell) 80%);}
+  .cell.mine.revealed::after{content:"●"; color:var(--mine); font-size:18px}
+  .legend{margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  .kbd{display:inline-grid; place-items:center; padding:2px 6px; border-radius:6px; border:1px solid color-mix(in oklab, var(--text) 20%, transparent);
+       background: color-mix(in oklab, var(--card) 90%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px;}
+  footer{margin:24px 0 60px; color:var(--muted); text-align:center}
+</style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <span class="badge" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 7h14M7 4h10M5 11h14M5 15h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <a href="index.html" style="font-weight:800">Study Break</a><span class="muted">/ Minesweeper</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <a class="btn secondary" href="index.html">Home</a>
+        <button id="resetBtn" class="btn">New Game</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="topbar">
+        <div class="stats">
+          <div class="counter">Mines: <span id="mineCount">000</span></div>
+          <div class="counter">Time: <span id="time">000</span></div>
+          <div class="counter">Best: <span id="best">—</span></div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+          <label>Difficulty
+            <select id="difficulty" class="select">
+              <option value="9x9x10">Beginner (9×9 • 10 mines)</option>
+              <option value="16x16x40">Intermediate (16×16 • 40)</option>
+              <option value="30x16x99">Expert (30×16 • 99)</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </label>
+          <label><span class="sr-only">Width</span><input id="w" type="number" min="4" max="50" value="9" class="select" style="width:84px" title="Width"></label>
+          <label><span class="sr-only">Height</span><input id="h" type="number" min="4" max="40" value="9" class="select" style="width:84px" title="Height"></label>
+          <label><span class="sr-only">Mines</span><input id="m" type="number" min="1" max="400" value="10" class="select" style="width:96px" title="Mines"></label>
+        </div>
+      </div>
+
+      <div id="board" class="board" role="grid" aria-label="Minesweeper board"></div>
+
+      <div class="legend">
+        <div><strong>Controls:</strong> Left-click reveal • Right-click flag • <span class="kbd">Space</span> reveal • <span class="kbd">F</span> flag • <span class="kbd">R</span> restart</div>
+        <div class="muted">First click is always safe. Numbers are color-coded. Long-press on mobile to flag.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>© <span id="year"></span> Study Break.</footer>
+
+<script>
+  const $ = (s, r=document)=>r.querySelector(s);
+  const $$ = (s, r=document)=>[...r.querySelectorAll(s)];
+  $('#year').textContent = new Date().getFullYear();
+
+  // State
+  let W=9, H=9, MINES=10;
+  let grid = []; // cells
+  let firstClick = true;
+  let flags = 0;
+  let revealed = 0;
+  let timer = 0, timerId = null, running = false, won = false, lost = false;
+  let focusIdx = 0; // keyboard focus
+
+  const board = $('#board');
+  const mineCountEl = $('#mineCount');
+  const timeEl = $('#time');
+  const bestEl = $('#best');
+  const diff = $('#difficulty');
+  const wEl = $('#w'), hEl = $('#h'), mEl = $('#m');
+
+  const COLORS = {
+    1:'#3b82f6', 2:'#16a34a', 3:'#ef4444', 4:'#7c3aed', 5:'#ea580c', 6:'#06b6d4', 7:'#94a3b8', 8:'#0ea5e9'
+  };
+
+  function pad(n){ return n.toString().padStart(3,'0'); }
+
+  function setDifficulty(preset){
+    if(preset==='9x9x10'){ W=9; H=9; MINES=10; }
+    else if(preset==='16x16x40'){ W=16; H=16; MINES=40; }
+    else if(preset==='30x16x99'){ W=30; H=16; MINES=99; }
+    else { // custom
+      W = clamp(+wEl.value||9, 4, 50);
+      H = clamp(+hEl.value||9, 4, 40);
+      const maxM = Math.max(1, Math.min(W*H-1, +mEl.value||10));
+      MINES = maxM;
+      mEl.value = maxM;
+    }
+    wEl.value = W; hEl.value = H; mEl.value = MINES;
+  }
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  function reset(preservePreset=true){
+    firstClick = true; flags=0; revealed=0; won=false; lost=false;
+    mineCountEl.textContent = pad(MINES - flags);
+    timeEl.textContent = pad(0);
+    if(timerId){ clearInterval(timerId); timerId=null; }
+    timer=0; running=false;
+
+    board.style.gridTemplateColumns = `repeat(${W}, 36px)`;
+    board.style.gridTemplateRows = `repeat(${H}, 36px)`;
+    board.innerHTML = '';
+
+    grid = [];
+    for(let y=0;y<H;y++){
+      const row=[];
+      for(let x=0;x<W;x++){
+        const cell = {
+          x,y, mine:false, adj:0, revealed:false, flagged:false, el:document.createElement('button')
+        };
+        const el = cell.el;
+        el.className='cell';
+        el.setAttribute('role','gridcell');
+        el.setAttribute('aria-label','hidden');
+        el.tabIndex = -1;
+        el.addEventListener('mousedown', e=>e.preventDefault()); // prevent focus steal on right click
+        el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); toggleFlag(cell); });
+        el.addEventListener('click', ()=> reveal(cell));
+        // Long-press to flag on touch
+        let pressTimer = null;
+        el.addEventListener('touchstart', ()=>{
+          pressTimer = setTimeout(()=>{ toggleFlag(cell); pressTimer=null; }, 400);
+        }, {passive:true});
+        el.addEventListener('touchend', ()=>{ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } });
+        board.appendChild(el);
+        row.push(cell);
+      }
+      grid.push(row);
+    }
+    // keyboard focus on first cell
+    focusIdx = 0;
+    getCellByIndex(0).el.tabIndex = 0;
+    getCellByIndex(0).el.focus();
+
+    updateBestLabel();
+  }
+
+  function placeMines(safeX, safeY){
+    // keep 3x3 around first click safe
+    const safe = new Set();
+    for(let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){
+      const nx=safeX+dx, ny=safeY+dy;
+      if(nx>=0 && nx<W && ny>=0 && ny<H) safe.add(ny*W+nx);
+    }
+    let placed=0;
+    while(placed<MINES){
+      const x=Math.floor(Math.random()*W), y=Math.floor(Math.random()*H);
+      const idx=y*W+x;
+      if(safe.has(idx)) continue;
+      const c=grid[y][x];
+      if(!c.mine){ c.mine=true; placed++; }
+    }
+    // compute adjacents
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      grid[y][x].adj = neighbors(x,y).filter(n=>n.mine).length;
+    }
+  }
+
+  function neighbors(x,y){
+    const list=[];
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      if(dx===0 && dy===0) continue;
+      const nx=x+dx, ny=y+dy;
+      if(nx>=0 && nx<W && ny>=0 && ny<H) list.push(grid[ny][nx]);
+    }
+    return list;
+  }
+
+  function startTimer(){
+    if(running) return;
+    running=true;
+    timerId = setInterval(()=>{ timer++; timeEl.textContent = pad(timer); }, 1000);
+  }
+
+  function stopTimer(){
+    running=false;
+    if(timerId){ clearInterval(timerId); timerId=null; }
+  }
+
+  function reveal(cell){
+    if(won || lost) return;
+    if(cell.flagged || cell.revealed) return;
+
+    if(firstClick){
+      placeMines(cell.x, cell.y);
+      firstClick=false;
+      startTimer();
+    }
+
+    cell.revealed=true; revealed++;
+    cell.el.classList.add('revealed');
+    cell.el.setAttribute('aria-label', cell.mine ? 'mine' : (cell.adj || 0));
+    if(cell.mine){
+      // boom
+      cell.el.classList.add('mine','revealed');
+      gameOver(false);
+      return;
+    } else if(cell.adj>0){
+      drawNumber(cell);
+    } else {
+      // flood
+      flood(cell);
+    }
+
+    checkWin();
+  }
+
+  function flood(start){
+    const q=[start];
+    while(q.length){
+      const c=q.shift();
+      neighbors(c.x,c.y).forEach(n=>{
+        if(!n.revealed && !n.flagged && !n.mine){
+          n.revealed=true; revealed++;
+          n.el.classList.add('revealed');
+          n.el.setAttribute('aria-label', n.adj || 0);
+          if(n.adj>0) drawNumber(n);
+          else q.push(n);
+        }
+      });
+    }
+  }
+
+  function drawNumber(c){
+    const n = c.adj;
+    c.el.textContent = n;
+    c.el.style.color = COLORS[n] || 'var(--text)';
+  }
+
+  function toggleFlag(cell){
+    if(won || lost) return;
+    if(cell.revealed) return;
+    cell.flagged = !cell.flagged;
+    cell.el.classList.toggle('flag', cell.flagged);
+    flags += cell.flagged ? 1 : -1;
+    mineCountEl.textContent = pad(MINES - flags);
+  }
+
+  function gameOver(isWin){
+    if(won || lost) return;
+    if(isWin){ won=true; }
+    else { lost=true; }
+    stopTimer();
+
+    if(lost){
+      // reveal mines
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+        const c = grid[y][x];
+        if(c.mine){ c.el.classList.add('mine','revealed'); }
+      }
+      toast('Game over. Press R for a new game.');
+    } else {
+      const key = `ms_best_${W}x${H}x${MINES}`;
+      const best = Number(localStorage.getItem(key)||0);
+      if(best===0 || timer<best){ localStorage.setItem(key, String(timer)); }
+      updateBestLabel();
+      toast('You win! New game with R.');
+    }
+  }
+
+  function updateBestLabel(){
+    const key = `ms_best_${W}x${H}x${MINES}`;
+    const best = Number(localStorage.getItem(key)||0);
+    bestEl.textContent = best ? pad(best) : '—';
+  }
+
+  function checkWin(){
+    const total = W*H;
+    if(revealed === total - MINES){
+      gameOver(true);
+    }
+  }
+
+  function toast(msg){
+    // quick inline toast
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.position='fixed'; t.style.left='50%'; t.style.top='20px'; t.style.transform='translateX(-50%)';
+    t.style.background='color-mix(in oklab, var(--card) 90%, transparent)';
+    t.style.border='1px solid color-mix(in oklab, var(--text) 14%, transparent)';
+    t.style.padding='10px 14px'; t.style.borderRadius='10px'; t.style.zIndex='100';
+    t.style.boxShadow='var(--shadow)';
+    document.body.appendChild(t);
+    setTimeout(()=>{ t.remove(); }, 2000);
+  }
+
+  // Keyboard controls
+  document.addEventListener('keydown', (e)=>{
+    const key = e.key.toLowerCase();
+    if(key==='r'){ newGame(); }
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(key)){
+      e.preventDefault();
+      const {x,y} = indexToXY(focusIdx);
+      let nx=x, ny=y;
+      if(key==='arrowup'||key==='w') ny = clamp(y-1, 0, H-1);
+      if(key==='arrowdown'||key==='s') ny = clamp(y+1, 0, H-1);
+      if(key==='arrowleft'||key==='a') nx = clamp(x-1, 0, W-1);
+      if(key==='arrowright'||key==='d') nx = clamp(x+1, 0, W-1);
+      focusTo(nx, ny);
+    }
+    if(key===' '){ e.preventDefault(); reveal(getCellByIndex(focusIdx)); }
+    if(key==='f'){ e.preventDefault(); toggleFlag(getCellByIndex(focusIdx)); }
+  });
+
+  function focusTo(x,y){
+    const idx = y*W + x;
+    getCellByIndex(focusIdx).el.tabIndex = -1;
+    focusIdx = idx;
+    const cell = getCellByIndex(idx);
+    cell.el.tabIndex = 0;
+    cell.el.focus();
+  }
+  function getCellByIndex(i){ const y=Math.floor(i/W), x=i%W; return grid[y][x]; }
+  function indexToXY(i){ return {x:i%W, y:Math.floor(i/W)}; }
+
+  // Difficulty selects
+  diff.addEventListener('change', ()=>{
+    if(diff.value==='custom'){
+      setDifficulty('custom');
+    }else{
+      setDifficulty(diff.value);
+    }
+    reset();
+  });
+  [wEl,hEl,mEl].forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      diff.value='custom';
+      setDifficulty('custom');
+      reset();
+    });
+  });
+
+  function newGame(){
+    setDifficulty(diff.value);
+    reset();
+  }
+
+  $('#resetBtn').addEventListener('click', newGame);
+
+  // Init
+  setDifficulty('9x9x10');
+  reset();
+
+</script>
+</body>
+</html>
