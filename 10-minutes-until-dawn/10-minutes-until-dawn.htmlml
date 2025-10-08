@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Study Break — 10 Minutes Till Dawn</title>
+<style>
+  :root{
+    --bg:#0b0f14; --surface:#0f141b; --card:#121923; --text:#e6edf3; --muted:#9fb0c0;
+    --accent:#16a34a; --accent-2:#22c55e; --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f8fc; --surface:#ffffff; --card:#f3f6fb; --text:#0b1220; --muted:#4b5a6a; --shadow:0 10px 30px rgba(0,0,0,.08); }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:
+      radial-gradient(1000px 600px at -10% 10%, rgba(34,197,94,.12), transparent 40%),
+      radial-gradient(900px 500px at 110% 0%, rgba(22,163,74,.12), transparent 40%),
+      var(--bg);
+    color:var(--text); line-height:1.55;
+  }
+  a{color:inherit; text-decoration:none}
+  .container{max-width:1100px; margin:0 auto; padding:16px 20px}
+  header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(10px);
+    background:color-mix(in oklab, var(--surface) 75%, transparent);
+    border-bottom:1px solid color-mix(in oklab, var(--text) 12%, transparent);
+  }
+  .nav{display:flex; align-items:center; justify-content:space-between; height:64px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:800}
+  .badge{width:32px; height:32px; border-radius:10px; display:grid; place-items:center;
+    background:linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow:var(--shadow)}
+  .btn{appearance:none; border:0; cursor:pointer; font-weight:800; padding:10px 14px; border-radius:12px;
+    background: var(--accent); color:white}
+  .panel{background:linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), var(--card));
+    border:1px solid color-mix(in oklab, var(--text) 12%, transparent);
+    border-radius:16px; box-shadow:var(--shadow); padding:14px}
+  .hud{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:8px}
+  .counter{font-weight:800}
+  canvas{width:100%; aspect-ratio: 16/9; background:#0a0f14; border-radius:12px; border:1px solid color-mix(in oklab, var(--text) 12%, transparent)}
+  .muted{color:var(--muted)}
+  .choice{display:grid; gap:10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))}
+  .card{border:1px solid color-mix(in oklab, var(--text) 12%, transparent); border-radius:12px; padding:12px; background:color-mix(in oklab, var(--card) 90%, transparent); cursor:pointer}
+  .card:hover{outline:2px solid color-mix(in oklab, var(--accent) 50%, transparent)}
+  .overlay{position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:20; padding:20px}
+  .overlay[open]{display:grid}
+  .modal{max-width:820px; width:95vw}
+</style>
+</head>
+<body>
+<header>
+  <div class="container nav">
+    <div class="brand">
+      <span class="badge" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 7h14M7 4h10M5 11h14M5 15h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <a href="index.html">Study Break</a><span class="muted"> / 10 Minutes Till Dawn</span>
+    </div>
+    <div style="display:flex; gap:8px">
+      <a class="btn" href="index.html">Home</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="panel">
+    <div class="hud">
+      <div class="counter">Time: <span id="time">10:00</span></div>
+      <div class="counter">HP: <span id="hp">100</span></div>
+      <div class="counter">Level: <span id="lvl">1</span> • XP: <span id="xp">0</span>/<span id="xpNeed">20</span></div>
+      <div class="muted">WASD move • Mouse aim • Auto-fire • <strong>P</strong> pause • <strong>R</strong> restart</div>
+    </div>
+    <canvas id="game" width="1280" height="720"></canvas>
+  </section>
+</main>
+
+<!-- Level Up Overlay -->
+<div class="overlay" id="levelUp">
+  <div class="panel modal">
+    <h3 style="margin-top:0">Level Up — choose one</h3>
+    <div class="choice" id="choices"></div>
+  </div>
+</div>
+
+<!-- Game Over / Win Overlay -->
+<div class="overlay" id="gameOver">
+  <div class="panel modal" style="text-align:center">
+    <h2 id="endTitle">You Died</h2>
+    <p class="muted" id="endSubtitle">Press <b>R</b> to try again.</p>
+    <div style="margin-top:10px"><button class="btn" onclick="restart()">Restart</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const timeEl = document.getElementById('time');
+  const hpEl = document.getElementById('hp');
+  const lvlEl = document.getElementById('lvl');
+  const xpEl = document.getElementById('xp');
+  const xpNeedEl = document.getElementById('xpNeed');
+  const levelUp = document.getElementById('levelUp');
+  const choicesWrap = document.getElementById('choices');
+  const gameOver = document.getElementById('gameOver');
+  const endTitle = document.getElementById('endTitle');
+  const endSubtitle = document.getElementById('endSubtitle');
+
+  // world settings
+  const W = canvas.width, H = canvas.height;
+  const mapSize = 5000; // big open field
+  const rng = (a,b)=> Math.random()*(b-a)+a;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+  // player + stats
+  const player = {x: mapSize/2, y: mapSize/2, r: 16, speed: 200, hp: 100, hpMax: 100};
+  const gun = {dmg: 10, fireRate: 4, bulletSpeed: 500, spread: 0.06, range: 700, last: 0};
+  let level = 1, xp = 0, xpNeed = 20;
+
+  // state
+  let enemies = [];
+  let bullets = [];
+  let orbs = [];
+  let particles = [];
+  let keys = {};
+  let mouse = {x: W/2, y: H/2};
+  let cam = {x: player.x-W/2, y: player.y-H/2};
+  let paused = false, dead=false, won=false;
+
+  // timer: 10 minutes countdown
+  let remaining = 10*60; // seconds
+  let last = performance.now();
+
+  // spawn loop scales over time
+  function spawnEnemies(dt){
+    // spawn rate increases as time passes
+    const t = (600-remaining)/600; // 0..1
+    const rate = 0.5 + t*3; // enemies per second
+    const count = rate*dt;
+    for(let i=0;i<count;i++){
+      const angle = Math.random()*Math.PI*2;
+      const dist = rng(500, 900);
+      const ex = player.x + Math.cos(angle)*dist;
+      const ey = player.y + Math.sin(angle)*dist;
+      const hp = 20 + Math.floor(t*60);
+      const spd = 60 + t*90;
+      enemies.push({x:ex, y:ey, r:14, hp, speed: spd});
+    }
+  }
+
+  function update(dt){
+    if(paused||dead||won) return;
+
+    // timer
+    remaining -= dt;
+    if(remaining<=0){ remaining=0; win(); }
+    const m = Math.floor(remaining/60), s = Math.floor(remaining%60);
+    timeEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+    // input
+    let dx=0, dy=0;
+    if(keys['w']||keys['arrowup']) dy -= 1;
+    if(keys['s']||keys['arrowdown']) dy += 1;
+    if(keys['a']||keys['arrowleft']) dx -= 1;
+    if(keys['d']||keys['arrowright']) dx += 1;
+    if(dx||dy){
+      const len = Math.hypot(dx,dy)||1;
+      player.x += (dx/len)*player.speed*dt;
+      player.y += (dy/len)*player.speed*dt;
+      player.x = clamp(player.x, 0, mapSize);
+      player.y = clamp(player.y, 0, mapSize);
+    }
+
+    // aim at nearest enemy; auto-fire
+    const target = nearestEnemy();
+    const now = performance.now()/1000;
+    if(target){
+      const angle = Math.atan2(target.y-player.y, target.x-player.x);
+      if(now - gun.last > 1/gun.fireRate){
+        shoot(angle + rng(-gun.spread, gun.spread));
+        gun.last = now;
+      }
+    }
+
+    // bullets
+    bullets.forEach(b=>{
+      b.x += Math.cos(b.a)*gun.bulletSpeed*dt;
+      b.y += Math.sin(b.a)*gun.bulletSpeed*dt;
+      b.life -= dt;
+      // collisions
+      for(const e of enemies){
+        if(e.hp>0 && dist(b,e) < e.r){ e.hp -= gun.dmg; b.life = 0; hit(e); break; }
+      }
+    });
+    bullets = bullets.filter(b=> b.life>0);
+
+    // enemies
+    enemies.forEach(e=>{
+      if(e.hp<=0) return;
+      const a = Math.atan2(player.y-e.y, player.x-e.x);
+      e.x += Math.cos(a)*e.speed*dt;
+      e.y += Math.sin(a)*e.speed*dt;
+      // touch damage
+      if(dist(e,player) < e.r + player.r){
+        player.hp -= 20*dt; // DPS on contact
+        if(player.hp<=0){ player.hp=0; die(); }
+      }
+    });
+    // dead enemies -> orbs
+    for(let i=enemies.length-1;i>=0;i--){
+      const e=enemies[i];
+      if(e.hp<=0){
+        enemies.splice(i,1);
+        // xp orb
+        orbs.push({x:e.x,y:e.y,r:6,v: rng(20,50)});
+        for(let k=0;k<8;k++) particles.push({x:e.x,y:e.y, a:rng(0,Math.PI*2), s:rng(60,140), life:rng(.2,.6)});
+      }
+    }
+
+    // orbs magnet
+    orbs.forEach(o=>{
+      const a = Math.atan2(player.y-o.y, player.x-o.x);
+      const d = dist(o,player);
+      const pull = d<200 ? 200 : 30;
+      o.x += Math.cos(a)*pull*dt;
+      o.y += Math.sin(a)*pull*dt;
+      if(d<player.r+6){
+        xp += 5;
+        o.collected = true;
+        if(xp>=xpNeed){ level++; levelUpMenu(); }
+      }
+    });
+    orbs = orbs.filter(o=>!o.collected);
+
+    // particles
+    particles.forEach(p=>{
+      p.x += Math.cos(p.a)*p.s*dt;
+      p.y += Math.sin(p.a)*p.s*dt;
+      p.life -= dt;
+    });
+    particles = particles.filter(p=>p.life>0);
+
+    // spawn
+    spawnEnemies(dt);
+
+    // camera
+    cam.x += ((player.x - W/2) - cam.x)*0.1;
+    cam.y += ((player.y - H/2) - cam.y)*0.1;
+
+    // HUD
+    hpEl.textContent = Math.ceil(player.hp);
+    lvlEl.textContent = level;
+    xpEl.textContent = xp;
+    xpNeedEl.textContent = xpNeed;
+  }
+
+  function draw(){
+    // background grid
+    ctx.fillStyle = '#0a0f14'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1;
+    const grid = 60;
+    const offX = -cam.x%grid, offY = -cam.y%grid;
+    for(let x=offX; x<W; x+=grid){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=offY; y<H; y+=grid){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // orbs
+    ctx.fillStyle = '#22c55e';
+    orbs.forEach(o=>{ ctx.beginPath(); ctx.arc(o.x-cam.x, o.y-cam.y, o.r, 0, Math.PI*2); ctx.fill(); });
+
+    // enemies
+    enemies.forEach(e=>{
+      const x=e.x-cam.x, y=e.y-cam.y;
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(x, y, e.r, 0, Math.PI*2); ctx.fill();
+      // tiny hp bar
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x-16, y-e.r-10, 32, 4);
+      ctx.fillStyle = '#22c55e'; ctx.fillRect(x-16, y-e.r-10, 32*(e.hp/80), 4);
+    });
+
+    // bullets
+    ctx.fillStyle = '#e6edf3';
+    bullets.forEach(b=>{ ctx.beginPath(); ctx.arc(b.x-cam.x, b.y-cam.y, 3, 0, Math.PI*2); ctx.fill(); });
+
+    // particles
+    ctx.fillStyle = 'rgba(239,68,68,.6)';
+    particles.forEach(p=>{ ctx.fillRect(p.x-cam.x, p.y-cam.y, 2, 2); });
+
+    // player
+    ctx.fillStyle = '#e6edf3';
+    ctx.beginPath(); ctx.arc(player.x-cam.x, player.y-cam.y, player.r, 0, Math.PI*2); ctx.fill();
+    // aim line to nearest
+    const t = nearestEnemy();
+    if(t){
+      ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.beginPath();
+      ctx.moveTo(player.x-cam.x, player.y-cam.y);
+      ctx.lineTo(t.x-cam.x, t.y-cam.y); ctx.stroke();
+    }
+  }
+
+  function loop(now){
+    const dt = Math.min(0.033, (now-last)/1000); last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function shoot(angle){
+    bullets.push({x:player.x + Math.cos(angle)*player.r, y:player.y + Math.sin(angle)*player.r, a:angle, life: gun.range/gun.bulletSpeed});
+  }
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function nearestEnemy(){
+    let best=null, bd=1e9;
+    for(const e of enemies){
+      const d=dist(e,player);
+      if(d<bd){ bd=d; best=e; }
+    }
+    return best;
+  }
+
+  function hit(e){
+    // slight knockback
+    const a = Math.atan2(e.y-player.y, e.x-player.x);
+    e.x += Math.cos(a)*12; e.y += Math.sin(a)*12;
+  }
+
+  // level up menu
+  function levelUpMenu(){
+    paused = true;
+    xp -= xpNeed; xpNeed = Math.floor(xpNeed*1.4);
+    choicesWrap.innerHTML = '';
+    const choices = [
+      {name:'+20% Damage', do:()=> gun.dmg = Math.floor(gun.dmg*1.2)},
+      {name:'+25% Fire Rate', do:()=> gun.fireRate = Math.round(gun.fireRate*1.25*10)/10},
+      {name:'+15% Move Speed', do:()=> player.speed = Math.floor(player.speed*1.15)},
+      {name:'+20 Max HP', do:()=> { player.hpMax += 20; player.hp = Math.min(player.hp+20, player.hpMax); }},
+      {name:'Bullets +1 (spread)', do:()=> { // multishot
+        const oldShoot = shoot;
+        shoot = (angle)=>{
+          const n=2; const s=0.18;
+          for(let i=-n;i<=n;i++){
+            if(i===0) continue;
+            bullets.push({x:player.x + Math.cos(angle)*player.r, y:player.y + Math.sin(angle)*player.r, a:angle+i*s, life: gun.range/gun.bulletSpeed});
+          }
+          oldShoot(angle);
+        }
+      }},
+    ];
+    // pick 3 random
+    while(choices.length>3){ choices.splice(Math.floor(Math.random()*choices.length),1); }
+    choices.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `<strong>${c.name}</strong><div class="muted">Apply instantly.</div>`;
+      el.addEventListener('click', ()=>{ c.do(); closeLevel(); });
+      choicesWrap.appendChild(el);
+    });
+    levelUp.setAttribute('open','');
+  }
+  function closeLevel(){
+    levelUp.removeAttribute('open');
+    paused = false;
+  }
+
+  function die(){
+    dead = true; gameOver.setAttribute('open',''); endTitle.textContent = 'You Died'; endSubtitle.innerHTML = 'Press <b>R</b> to try again.';
+  }
+  function win(){
+    won = true; gameOver.setAttribute('open',''); endTitle.textContent = 'You Survived 10:00!'; endSubtitle.innerHTML = 'Press <b>R</b> to play again.';
+  }
+  window.restart = function(){
+    // reset all
+    enemies=[]; bullets=[]; orbs=[]; particles=[];
+    player.x=mapSize/2; player.y=mapSize/2; player.hp=player.hpMax=100; player.speed=200;
+    gun.dmg=10; gun.fireRate=4; gun.bulletSpeed=500; gun.spread=0.06; gun.range=700; gun.last=0;
+    level=1; xp=0; xpNeed=20; remaining=600; paused=false; dead=false; won=false;
+    gameOver.removeAttribute('open'); levelUp.removeAttribute('open');
+  }
+
+  // input
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    keys[k]=true;
+    if(k==='p') paused=!paused;
+    if(k==='r') restart();
+  });
+  window.addEventListener('keyup', (e)=>{ keys[e.key.toLowerCase()]=false; });
+  canvas.addEventListener('mousemove', (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top;
+  });
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
