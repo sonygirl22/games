@@ -6,6 +6,10 @@
   <meta name="color-scheme" content="light dark" />
   <title>Study Break — Games</title>
   <meta name="description" content="Quick logic and classics for short study breaks." />
+
+  <!-- Base favicon -->
+  <link id="site-favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'%3E%3Crect rx='22' width='128' height='128' fill='%2316a34a'/%3E%3Cpath d='M32 80h64v12H32zM44 36h40v12H44zM32 56h64v12H32z' fill='white'/%3E%3C/svg%3E"/>
+
   <style>
     :root{
       --bg:#0b0f14; --surface:#0f141b; --card:#121923; --text:#e6edf3; --muted:#9fb0c0;
@@ -27,6 +31,8 @@
     }
     a{color:inherit; text-decoration:none}
     .container{max-width:1100px; margin:0 auto; padding:0 20px}
+
+    /* Header */
     header{
       position:sticky; top:0; z-index:20;
       backdrop-filter:saturate(140%) blur(10px);
@@ -52,10 +58,13 @@
     .chip[data-active="true"]{
       background: color-mix(in oklab, var(--accent) 18%, transparent); color:white; border-color: color-mix(in oklab, var(--accent) 38%, transparent)
     }
+
     main{padding:28px 0}
     h1{margin:0 0 6px; font-size:clamp(22px, 3.5vw, 32px)}
     .muted{color:var(--muted)}
     .filters{display:flex; gap:10px; flex-wrap:wrap; margin:18px 0 8px}
+
+    /* Grid */
     .grid{display:grid; gap:14px; grid-template-columns: repeat(12, minmax(0, 1fr));}
     .card{
       grid-column: span 3; min-height:220px; background: linear-gradient(180deg, color-mix(in oklab, var(--card) 92%, transparent), var(--card));
@@ -82,15 +91,67 @@
     }
     .btn:hover{transform: translateY(-1px)}
     .btn.secondary{background: color-mix(in oklab, var(--text) 8%, transparent); color:var(--text); box-shadow:none; border:1px solid color-mix(in oklab, var(--text) 12%, transparent)}
+
     @media (max-width: 1100px){ .card{grid-column: span 4} }
     @media (max-width: 800px){ .card{grid-column: span 6} }
     @media (max-width: 600px){ .grid{grid-template-columns:1fr} .card{grid-column: 1} }
+
     footer{
       margin-top:30px; padding:28px 0 60px; color:var(--muted);
       border-top:1px solid color-mix(in oklab, var(--text) 12%, transparent);
     }
     .kbd{display:inline-grid; place-items:center; padding:2px 6px; border-radius:6px; border:1px solid color-mix(in oklab, var(--text) 20%, transparent);
       background: color-mix(in oklab, var(--card) 90%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px;}
+
+    /* ---------- PANIC CLOAK (styles) ---------- */
+    #panicBtn{
+      position:fixed; right:14px; bottom:14px; z-index:60;
+      width:46px; height:46px; border-radius:12px; border:1px solid color-mix(in oklab, var(--text) 14%, transparent);
+      background:color-mix(in oklab, var(--card) 90%, transparent); color:var(--text); cursor:pointer; font-weight:900;
+      box-shadow:var(--shadow);
+    }
+    #panicBtn:after{content:"SOS"; font-size:12px}
+    .panic-menu{
+      position:fixed; right:14px; bottom:68px; z-index:60; display:none;
+      background:var(--surface); border:1px solid color-mix(in oklab, var(--text) 14%, transparent);
+      border-radius:12px; box-shadow:var(--shadow); padding:8px; min-width:220px;
+    }
+    .panic-menu[open]{display:block}
+    .panic-menu button{
+      width:100%; text-align:left; padding:10px 12px; border-radius:10px; border:0; cursor:pointer;
+      background:transparent; color:var(--text); font-weight:700;
+    }
+    .panic-menu button:hover{background:color-mix(in oklab, var(--text) 10%, transparent)}
+    /* cloak overlay */
+    #cloakOverlay{
+      position:fixed; inset:0; z-index:70; display:none; background:var(--surface); color:var(--text);
+    }
+    body[data-cloak] header,
+    body[data-cloak] main,
+    body[data-cloak] footer,
+    body[data-cloak] #panicBtn,
+    body[data-cloak] .panic-menu{ display:none !important; }
+    body[data-cloak] #cloakOverlay{ display:block; }
+
+    /* Generic inbox look */
+    .inbox-wrap{display:grid; grid-template-columns:240px 1fr; height:100%}
+    .inbox-sidebar{border-right:1px solid color-mix(in oklab, var(--text) 12%, transparent); padding:12px}
+    .inbox-top{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid color-mix(in oklab, var(--text) 12%, transparent)}
+    .inbox-search{flex:1; margin:0 12px; padding:10px 12px; border-radius:999px; border:1px solid color-mix(in oklab, var(--text) 12%, transparent); background:var(--card); color:var(--text)}
+    .inbox-list{overflow:auto}
+    .mail-row{display:grid; grid-template-columns:200px 1fr 120px; gap:10px; padding:12px 14px; border-bottom:1px solid color-mix(in oklab, var(--text) 10%, transparent)}
+    .mail-row:hover{background:color-mix(in oklab, var(--text) 6%, transparent)}
+    .label{font-size:12px; color:var(--muted)}
+    .exit-link{position:absolute; left:10px; top:10px; font-weight:800; cursor:pointer}
+
+    /* Generic gradebook look */
+    .grades-wrap{padding:16px}
+    .grades-header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px}
+    .grades-table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:12px; overflow:hidden; border:1px solid color-mix(in oklab, var(--text) 12%, transparent)}
+    .grades-table th, .grades-table td{padding:12px; border-bottom:1px solid color-mix(in oklab, var(--text) 10%, transparent); text-align:left}
+    .grade-A{color:#16a34a; font-weight:800}
+    .grade-B{color:#22c55e; font-weight:800}
+    .grade-C{color:#eab308; font-weight:800}
   </style>
 </head>
 <body>
@@ -141,11 +202,11 @@
         <div class="actions"><span class="btn">Open</span><span class="btn secondary">Details</span></div>
       </a>
 
-      <!-- NEW: 10 Minutes Till Dawn -->
-      <a class="card" data-tags="arcade shooter survival" href="till-dawn.html">
+      <!-- 10 Minutes Until Dawn -->
+      <a class="card" data-tags="arcade shooter survival" href="10-minutes-until-dawn.html">
         <span class="tag">Arcade</span>
         <div class="thumb">SURVIVE</div>
-        <h3>10 Minutes Till Dawn</h3>
+        <h3>10 Minutes Until Dawn</h3>
         <p>Circle, shoot, and outlast waves. Survive the full 10:00.</p>
         <div class="actions"><span class="btn">Play</span><span class="btn secondary">How to</span></div>
       </a>
@@ -175,6 +236,16 @@
     </div>
   </footer>
 
+  <!-- Super Emergency Button + Picker -->
+  <button id="panicBtn" title="Super Emergency"></button>
+  <div class="panic-menu" id="panicMenu" role="menu" aria-label="Emergency options">
+    <button data-cloak="inbox">Gmail-style Inbox</button>
+    <button data-cloak="grades">PowerSchool-style Gradebook</button>
+  </div>
+
+  <!-- Cloak overlay -->
+  <div id="cloakOverlay" aria-hidden="true"></div>
+
   <script>
     const $ = (s, r=document)=>r.querySelector(s);
     const $$ = (s, r=document)=>[...r.querySelectorAll(s)];
@@ -196,6 +267,126 @@
     q.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ q.value=''; applyFilters(); q.blur(); }});
     document.addEventListener('keydown',(e)=>{ if(e.key==='/'){ e.preventDefault(); q.focus(); }});
     chips.forEach(c=>c.addEventListener('click',()=>{ chips.forEach(x=>x.dataset.active=false); c.dataset.active=true; activeFilter=c.dataset.filter; applyFilters(); }));
+
+    /* ---------- PANIC CLOAK (script) ---------- */
+    const panicBtn = $('#panicBtn');
+    const panicMenu = $('#panicMenu');
+    const overlay = $('#cloakOverlay');
+    const fav = $('#site-favicon');
+    const originalTitle = document.title;
+    const originalIcon = fav?.href || '';
+
+    // Position and toggle menu
+    function toggleMenu(open){
+      panicMenu.toggleAttribute('open', open ?? !panicMenu.hasAttribute('open'));
+    }
+    panicBtn.addEventListener('click', ()=> toggleMenu());
+    document.addEventListener('click', (e)=>{
+      if(!panicMenu.contains(e.target) && e.target!==panicBtn) panicMenu.removeAttribute('open');
+    });
+
+    // Templates
+    const inboxTemplate = `
+      <div class="exit-link" id="exitCloak">Exit</div>
+      <div class="inbox-top">
+        <div style="font-weight:800">Mail</div>
+        <input class="inbox-search" placeholder="Search mail" />
+        <div class="label">9:41 AM</div>
+      </div>
+      <div class="inbox-wrap">
+        <aside class="inbox-sidebar">
+          <button style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid color-mix(in oklab, var(--text) 12%, transparent); background:var(--card); color:var(--text); font-weight:800">Compose</button>
+          <div style="margin-top:10px; display:grid; gap:8px">
+            <div>Inbox</div><div>Starred</div><div>Sent</div><div>Drafts</div><div>More</div>
+          </div>
+        </aside>
+        <section class="inbox-list" aria-label="Email list">
+          ${Array.from({length:14}).map((_,i)=>`
+            <div class="mail-row">
+              <div><strong>Class Updates</strong><div class="label">no-reply@school</div></div>
+              <div>Reminder • ${i%2? 'Assignment rubric posted':'Schedule changes for next week'} — <span class="label">View details in your portal.</span></div>
+              <div class="label">${8+i}:0${i%6}</div>
+            </div>
+          `).join('')}
+        </section>
+      </div>
+    `;
+    const gradesTemplate = `
+      <div class="exit-link" id="exitCloak">Exit</div>
+      <div class="grades-wrap">
+        <div class="grades-header">
+          <div style="font-weight:800; font-size:18px">Gradebook</div>
+          <input class="inbox-search" style="max-width:320px" placeholder="Search courses" />
+        </div>
+        <table class="grades-table" aria-label="Grades">
+          <thead><tr><th>Course</th><th>Teacher</th><th>Term</th><th>Grade</th></tr></thead>
+          <tbody>
+            <tr><td>Algebra I</td><td>M. Rivera</td><td>Q1</td><td class="grade-A">A</td></tr>
+            <tr><td>English</td><td>L. Chen</td><td>Q1</td><td class="grade-B">B+</td></tr>
+            <tr><td>Science</td><td>T. Patel</td><td>Q1</td><td class="grade-A">A-</td></tr>
+            <tr><td>History</td><td>J. Torres</td><td>Q1</td><td class="grade-B">B</td></tr>
+            <tr><td>PE</td><td>G. Hall</td><td>Q1</td><td class="grade-A">A</td></tr>
+          </tbody>
+        </table>
+        <div class="label" style="margin-top:8px">Last sync: just now</div>
+      </div>
+    `;
+
+    function setFavicon(mode){
+      const iconInbox = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect rx='22' width='128' height='128' fill='%23f43f5e'/%3E%3Cpath d='M24 40l40 26 40-26v48a8 8 0 0 1-8 8H32a8 8 0 0 1-8-8V40z' fill='white'/%3E%3Cpath d='M24 40l40 26 40-26H24z' fill='%23fecdd3'/%3E%3C/svg%3E";
+      const iconGrades = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect rx='22' width='128' height='128' fill='%230ea5e9'/%3E%3Cpath d='M36 36h56v12H36zM36 56h36v12H36zM36 76h46v12H36z' fill='white'/%3E%3C/svg%3E";
+      if(!fav) return;
+      fav.href = mode==='inbox' ? iconInbox : mode==='grades' ? iconGrades : originalIcon;
+    }
+
+    function cloak(mode){
+      document.body.dataset.cloak = mode;
+      overlay.innerHTML = mode==='inbox' ? inboxTemplate : gradesTemplate;
+      document.title = mode==='inbox' ? "Inbox" : "Gradebook";
+      setFavicon(mode);
+      localStorage.setItem('lastCloak', mode);
+      $('#exitCloak')?.addEventListener('click', uncloak);
+    }
+    function uncloak(){
+      delete document.body.dataset.cloak;
+      overlay.innerHTML = "";
+      document.title = originalTitle;
+      setFavicon(null);
+    }
+
+    // Picker actions
+    $$('#panicMenu [data-cloak]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const mode = b.getAttribute('data-cloak');
+        toggleMenu(false);
+        cloak(mode);
+      });
+    });
+
+    // Hotkeys
+    // Ctrl+Shift+1 => Inbox; Ctrl+Shift+2 => Gradebook; Ctrl+Shift+X => Exit
+    document.addEventListener('keydown', (e)=>{
+      if(e.ctrlKey && e.shiftKey && e.key==='1'){ e.preventDefault(); cloak('inbox'); }
+      if(e.ctrlKey && e.shiftKey && e.key==='2'){ e.preventDefault(); cloak('grades'); }
+      if(e.ctrlKey && e.shiftKey && (e.key==='X' || e.key==='x')){ e.preventDefault(); uncloak(); }
+
+      // Quick toggle to last mode with backslash
+      if(e.key === '\\'){
+        const last = localStorage.getItem('lastCloak') || 'inbox';
+        if(document.body.dataset.cloak) uncloak(); else cloak(last);
+      }
+    });
+
+    // Triple-Escape to exit
+    let escCount=0, escTimer=null;
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Escape' && document.body.dataset.cloak){
+        escCount++;
+        clearTimeout(escTimer);
+        escTimer = setTimeout(()=> escCount=0, 500);
+        if(escCount>=3){ uncloak(); escCount=0; }
+      }
+    });
   </script>
 </body>
 </html>
