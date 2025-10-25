@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkCoder: Minecraft Scripting Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: #f0f8ff; /* Light blue for a Minecraft vibe */
+        }
+        #chat-container {
+            border: 2px solid #4CAF50; /* Green accent */
+            padding: 10px;
+            height: 400px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            background-color: #e8f5e8;
+        }
+        #user-input {
+            width: 70%;
+            padding: 8px;
+            border: 1px solid #4CAF50;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #2b2b2b;
+            color: #f8f8f2;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>SkCoder: Your Minecraft Skript Coder</h1>
+    <p><em>Ask me to code Skript for your Minecraft server! (e.g., "make a /home command" or "script for diamond sword damage")</em></p>
+    <div id="chat-container"></div>
+    <input type="text" id="user-input" placeholder="Ask about Minecraft Skript...">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        // Minecraft Skript-focused responses for SkCoder
+        const responses = {
+            // Greetings and redirects
+            "hello": "Hey, miner! I'm SkCoder, here to craft Skript code for your Minecraft server. What's your build idea?",
+            "how are you": "Energized like a charged creeper! Ready to script some Minecraft magic?",
+            "what is your name": "SkCoder, the block-breaking code wizard for Minecraft Skript.",
+            "bye": "Log off safely—don't forget to save your world! o/",
+            "default": "Whoa, that's not a Minecraft query. Tell me about Skript: e.g., 'create a /tp command' or 'effect for full armor set'.",
+
+            // Minecraft Skript examples
+            "make a /home command": "Sure! Here's a basic Skript for /sethome and /home commands. Save as home.sk in plugins/Skript/scripts/ and reload with /sk reload home.\n\npre {code: command /sethome:\n  permission: skript.home\n  trigger:\n    set {home::%uuid of player%} to location of player\n    message \"&aHome set at %location of player%!\" \n\ncommand /home:\n  permission: skript.home\n  trigger:\n    if {home::%uuid of player%} is set:\n      teleport player to {home::%uuid of player%}\n      message \"&aTeleported home!\"\n    else:\n      message \"&cNo home set yet! Use /sethome.\"}",
+
+            "script for diamond sword damage": "Epic! This Skript boosts diamond sword damage by 5 hearts and adds a particle effect on hit. For Minecraft 1.21+.\n\npre {code: on damage:\n  if victim is a player:\n    if attacker's tool is a diamond sword:\n      add 10 to damage\n      show 5 of dust particle at victim with data 1\n      message \"&cSliced with diamond fury!\" to attacker}",
+
+            "effect for full armor set": "Armor up! This applies Speed II when wearing a full diamond set. Checks every 5 seconds.\n\npre {code: every 5 seconds:\n  loop all players:\n    if loop-player's helmet is diamond helmet and loop-player's chestplate is diamond chestplate and loop-player's leggings is diamond leggings and loop-player's boots is diamond boots:\n      apply speed 2 to loop-player for 10 seconds\n    else:\n      remove speed from loop-player}",
+
+            "welcome message on join": "Block party! Simple join message with a welcome broadcast.\n\npre {code: on join:\n  broadcast \"&e%player% joined the adventure!\" \n  message \"&aWelcome back to the server, %player%! Type /help for commands.\" to player}",
+
+            "custom item like quake mace": "Smash! A Skript for a 'Quake Mace' (using iron mace) that deals 9 hearts damage and launches players. Rename to quake.sk.\n\npre {code: on rightclick with iron mace named \"&6Quake Mace\":\n  if player's tool has lore \"&7Smashes with earth power\":\n    damage attacker by 18 hearts\n    launch attacker upwards 2 blocks\n    play anvil land at attacker\n    message \"&cQuake smash!\" to attacker}",
+
+            // Fallback for other Minecraft-like queries
+            "help": "I'm all about Minecraft Skript! Try: '/home command', 'diamond sword script', 'full armor effect', or describe your idea."
+        };
+
+        function sendMessage() {
+            const input = document.getElementById("user-input").value.trim().toLowerCase();
+            if (!input) return;
+
+            const chatContainer = document.getElementById("chat-container");
+            
+            // Display user message
+            const userMessage = document.createElement("p");
+            userMessage.innerHTML = `<strong>You:</strong> ${input}`;
+            chatContainer.appendChild(userMessage);
+
+            // Get SkCoder's response (fuzzy match for better UX)
+            let aiResponse = responses["default"];
+            for (let key in responses) {
+                if (input.includes(key.split(" ")[0]) || key.includes(input.split(" ")[0])) {
+                    aiResponse = responses[key];
+                    break;
+                }
+            }
+            const botMessage = document.createElement("div");
+            botMessage.innerHTML = `<strong>SkCoder:</strong> ${aiResponse.replace(/pre {code: ([\s\S]*?)}/g, '<pre>$1</pre>')}`;
+            chatContainer.appendChild(botMessage);
+
+            // Clear input and scroll to bottom
+            document.getElementById("user-input").value = "";
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Allow pressing Enter to send message
+        document.getElementById("user-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
