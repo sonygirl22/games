@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkCoder: Minecraft Skript Genius</title>
+    <title>SkCoder: AI Minecraft Skript Genius</title>
     <style>
         :root {
             --bg-color: #f0f8ff; /* Light blue (daytime Minecraft) */
@@ -14,6 +14,7 @@
             --button-hover: #45a049;
             --code-bg: #2b2b2b;
             --code-text: #f8f8f2;
+            --input-bg: #fff;
         }
         [data-theme="dark"] {
             --bg-color: #1a1a1a; /* Dark nether-like */
@@ -24,6 +25,7 @@
             --button-hover: #e04e4e;
             --code-bg: #2b2b2b;
             --code-text: #f8f8f2;
+            --input-bg: #3e3e3e;
         }
         body {
             font-family: Arial, sans-serif;
@@ -48,6 +50,37 @@
         #dark-mode-toggle:hover {
             background-color: var(--button-hover);
         }
+        #api-key-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--chat-bg);
+        }
+        #api-key-input {
+            width: 70%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            border-radius: 3px;
+        }
+        #api-key-button {
+            padding: 8px 15px;
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-left: 10px;
+        }
+        #api-key-button:hover {
+            background-color: var(--button-hover);
+        }
+        #status {
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
         #chat-container {
             border: 2px solid var(--border-color);
             padding: 10px;
@@ -60,7 +93,7 @@
             width: 70%;
             padding: 8px;
             border: 1px solid var(--border-color);
-            background-color: var(--chat-bg);
+            background-color: var(--input-bg);
             color: var(--text-color);
         }
         #send-button {
@@ -71,8 +104,12 @@
             cursor: pointer;
             border-radius: 5px;
         }
-        #send-button:hover {
+        #send-button:hover, #send-button:disabled:hover {
             background-color: var(--button-hover);
+        }
+        #send-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
         pre {
             background-color: var(--code-bg);
@@ -81,24 +118,44 @@
             border-radius: 5px;
             overflow-x: auto;
             font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
         }
         .header {
             position: relative;
             margin-bottom: 20px;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ff00;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <button id="dark-mode-toggle" onclick="toggleDarkMode()">Dark Mode</button>
-        <h1>SkCoder: Your Minecraft Skript Genius</h1>
-        <p><em>Ask me to code Skript for Minecraft! Try "kit command", "mob spawner", "block break event", or your own idea!</em></p>
+        <h1>SkCoder: AI Minecraft Skript Genius</h1>
+        <p><em>Powered by ChatGPT API. Ask for custom Skript code! (e.g., "make a simple chest script")</em></p>
     </div>
+
+    <div id="api-key-section">
+        <label for="api-key-input">Enter your OpenAI API Key:</label><br>
+        <input type="password" id="api-key-input" placeholder="sk-... (from https://platform.openai.com/api-keys)">
+        <button id="api-key-button" onclick="setApiKey()">Set Key</button>
+        <div id="status"></div>
+    </div>
+
     <div id="chat-container"></div>
-    <input type="text" id="user-input" placeholder="Ask about Minecraft Skript...">
-    <button id="send-button" onclick="sendMessage()">Send</button>
+    <input type="text" id="user-input" placeholder="Ask about Minecraft Skript..." disabled>
+    <button id="send-button" onclick="sendMessage()" disabled>Send</button>
 
     <script>
+        let apiKey = null;
+        let conversationHistory = [
+            { role: "system", content: "You are SkCoder, an expert Minecraft Skript coder. ONLY respond to Minecraft-related queries, especially generating Skript code for Spigot/Paper servers (1.21+). For any non-Minecraft topic, politely redirect: 'Let's stick to Minecraft Skript—ask me about commands, events, or custom items!' Always include full, working Skript code in <pre> tags with explanations. Be fun and coding-focused." }
+        ];
+
         // Toggle dark mode
         function toggleDarkMode() {
             const body = document.body;
@@ -112,64 +169,102 @@
             }
         }
 
-        // Minecraft Skript-focused responses for SkCoder
-        const responses = {
-            // General responses
-            "hello": "Yo, miner! SkCoder here, ready to craft some epic Minecraft Skripts. What's your server idea?",
-            "how are you": "Powered up like a redstone circuit! What's the next Minecraft Skript you need?",
-            "what is your name": "I'm SkCoder, your go-to for Minecraft Skript coding. Ask me about commands, events, or items!",
-            "bye": "Peace out—keep mining and coding! o/",
-            "default": "Hmm, let's stick to Minecraft Skript. Try 'kit command', 'mob spawner', or describe a feature!",
-
-            // Skript examples
-            "make a /home command": "Here's a Skript for /sethome and /home. Save as home.sk and reload with /sk reload home.\n\npre {code: command /sethome:\n  permission: skript.home\n  trigger:\n    set {home::%uuid of player%} to location of player\n    message \"&aHome set at %location of player%!\"\n\ncommand /home:\n  permission: skript.home\n  trigger:\n    if {home::%uuid of player%} is set:\n      teleport player to {home::%uuid of player%}\n      message \"&aTeleported home!\"\n    else:\n      message \"&cNo home set yet! Use /sethome.\"}",
-
-            "script for diamond sword damage": "This Skript makes a diamond sword deal +5 hearts damage with a spark effect. For 1.21+.\n\npre {code: on damage:\n  if victim is a living entity:\n    if attacker's tool is a diamond sword:\n      add 10 to damage\n      show 10 of spark particle at victim\n      message \"&cCritical slash!\" to attacker}",
-
-            "effect for full armor set": "This applies Strength II when wearing full diamond armor, checked every 5 seconds.\n\npre {code: every 5 seconds:\n  loop all players:\n    if loop-player's helmet is diamond helmet and loop-player's chestplate is diamond chestplate and loop-player's leggings is diamond leggings and loop-player's boots is diamond boots:\n      apply strength 2 to loop-player for 10 seconds\n    else:\n      remove strength from loop-player}",
-
-            "welcome message on join": "Block party! A join message with a welcome broadcast.\n\npre {code: on join:\n  broadcast \"&e%player% joined the adventure!\"\n  message \"&aWelcome back, %player%! Type /help for commands.\" to player}",
-
-            "custom item like quake mace": "Smash! A Skript for a 'Quake Mace' (iron mace) dealing 9 hearts and launching players. Save as quake.sk.\n\npre {code: on rightclick with iron mace named \"&6Quake Mace\":\n  if player's tool has lore \"&7Smashes with earth power\":\n    damage attacker by 18 hearts\n    launch attacker upwards 2 blocks\n    play anvil land at attacker\n    message \"&cQuake smash!\" to attacker}",
-
-            "kit command": "Here's a Skript for a /kit starter command with a 24-hour cooldown.\n\npre {code: command /kit [<text>]:\n  trigger:\n    if arg-1 is \"starter\":\n      if {kit.starter::%uuid of player%::cooldown} is not set or {kit.starter::%uuid of player%::cooldown} is less than now:\n        give player iron sword, iron pickaxe, 16 oak logs, and 32 bread\n        message \"&aEnjoy your starter kit!\"\n        set {kit.starter::%uuid of player%::cooldown} to now + 24 hours\n      else:\n        message \"&cWait %difference between now and {kit.starter::%uuid of player%::cooldown}%!\"\n    else:\n      message \"&cUse /kit starter\"}",
-
-            "mob spawner": "This Skript spawns 3 zombies near a player when they break a spawner. Save as spawner.sk.\n\npre {code: on break of spawner:\n  spawn 3 zombies at block's location\n  message \"&cYou broke a spawner! Zombies incoming!\"\n  play sound \"entity.zombie.ambient\" at block's location}",
-
-            "block break event": "This gives a 10% chance to drop a diamond when breaking stone.\n\npre {code: on break of stone:\n  if random number between 1 and 100 <= 10:\n    drop 1 diamond at block's location\n    message \"&bLucky! You found a diamond!\"}",
-
-            "help": "I'm SkCoder, your Minecraft Skript coder! Try: 'kit command', 'mob spawner', 'block break event', or your own idea."
-        };
-
-        function sendMessage() {
-            const input = document.getElementById("user-input").value.trim().toLowerCase();
-            if (!input) return;
-
-            const chatContainer = document.getElementById("chat-container");
-            
-            // Display user message
-            const userMessage = document.createElement("p");
-            userMessage.innerHTML = `<strong>You:</strong> ${input}`;
-            chatContainer.appendChild(userMessage);
-
-            // Get SkCoder's response (fuzzy match)
-            let aiResponse = responses["default"];
-            for (let key in responses) {
-                if (input.includes(key.split(" ")[0]) || key.includes(input.split(" ")[0])) {
-                    aiResponse = responses[key];
-                    break;
-                }
+        // Set API key
+        function setApiKey() {
+            const keyInput = document.getElementById("api-key-input");
+            const status = document.getElementById("status");
+            apiKey = keyInput.value.trim();
+            if (!apiKey) {
+                status.innerHTML = '<span class="error">Please enter a valid API key!</span>';
+                return;
             }
-            const botMessage = document.createElement("div");
-            botMessage.innerHTML = `<strong>SkCoder:</strong> ${aiResponse.replace(/pre {code: ([\s\S]*?)}/g, '<pre>$1</pre>')}`;
-            chatContainer.appendChild(botMessage);
-
-            // Clear input and scroll to bottom
-            document.getElementById("user-input").value = "";
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // Test the key with a simple request
+            fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [{ role: 'user', content: 'Say "API works!"' }],
+                    max_tokens: 10
+                })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Invalid key or rate limit');
+                return response.json();
+            })
+            .then(data => {
+                if (data.choices[0].message.content.includes('API works')) {
+                    status.innerHTML = '<span class="success">API key set! Ready to chat.</span>';
+                    document.getElementById("user-input").disabled = false;
+                    document.getElementById("send-button").disabled = false;
+                    keyInput.disabled = true; // Hide after success
+                }
+            })
+            .catch(err => {
+                status.innerHTML = `<span class="error">Error: ${err.message}. Check your key.</span>`;
+                apiKey = null;
+            });
         }
 
-        // Allow pressing Enter to send message
+        // Send message to API
+        async function sendMessage() {
+            const input = document.getElementById("user-input");
+            const message = input.value.trim();
+            if (!message || !apiKey) return;
+
+            const chatContainer = document.getElementById("chat-container");
+            input.value = '';
+            input.disabled = true;
+            document.getElementById("send-button").disabled = true;
+
+            // Add user message
+            const userDiv = document.createElement("div");
+            userDiv.innerHTML = `<strong>You:</strong> ${message}`;
+            chatContainer.appendChild(userDiv);
+            conversationHistory.push({ role: "user", content: message });
+
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: conversationHistory,
+                        max_tokens: 500,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+
+                const data = await response.json();
+                const aiReply = data.choices[0].message.content;
+
+                // Add AI response
+                const botDiv = document.createElement("div");
+                botDiv.innerHTML = `<strong>SkCoder:</strong> ${aiReply}`;
+                chatContainer.appendChild(botDiv);
+
+                conversationHistory.push({ role: "assistant", content: aiReply });
+
+            } catch (err) {
+                const errorDiv = document.createElement("div");
+                errorDiv.innerHTML = `<strong>SkCoder:</strong> <span class="error">Oops! ${err.message}. Check your connection or API key.</span>`;
+                chatContainer.appendChild(errorDiv);
+            } finally {
+                input.disabled = false;
+                document.getElementById("send-button").disabled = false;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+        // Enter key support
         document.getElementById("user-input").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 sendMessage();
