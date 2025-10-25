@@ -3,78 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkCoder: Minecraft Scripting Assistant</title>
+    <title>SkCoder: Minecraft Skript Genius</title>
     <style>
+        :root {
+            --bg-color: #f0f8ff; /* Light blue (daytime Minecraft) */
+            --chat-bg: #e8f5e8; /* Light green */
+            --border-color: #4CAF50; /* Minecraft green */
+            --text-color: #000;
+            --button-bg: #4CAF50;
+            --button-hover: #45a049;
+            --code-bg: #2b2b2b;
+            --code-text: #f8f8f2;
+        }
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a; /* Dark nether-like */
+            --chat-bg: #2e2e2e; /* Dark gray */
+            --border-color: #ff5555; /* Nether red */
+            --text-color: #f0f0f0;
+            --button-bg: #ff5555;
+            --button-hover: #e04e4e;
+            --code-bg: #2b2b2b;
+            --code-text: #f8f8f2;
+        }
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 20px auto;
             padding: 10px;
-            background-color: #f0f8ff; /* Light blue for a Minecraft vibe */
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+        #dark-mode-toggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 8px 15px;
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #dark-mode-toggle:hover {
+            background-color: var(--button-hover);
         }
         #chat-container {
-            border: 2px solid #4CAF50; /* Green accent */
+            border: 2px solid var(--border-color);
             padding: 10px;
             height: 400px;
             overflow-y: scroll;
             margin-bottom: 10px;
-            background-color: #e8f5e8;
+            background-color: var(--chat-bg);
         }
         #user-input {
             width: 70%;
             padding: 8px;
-            border: 1px solid #4CAF50;
+            border: 1px solid var(--border-color);
+            background-color: var(--chat-bg);
+            color: var(--text-color);
         }
-        button {
+        #send-button {
             padding: 8px 15px;
-            background-color: #4CAF50;
+            background-color: var(--button-bg);
             color: white;
             border: none;
             cursor: pointer;
+            border-radius: 5px;
         }
-        button:hover {
-            background-color: #45a049;
+        #send-button:hover {
+            background-color: var(--button-hover);
         }
         pre {
-            background-color: #2b2b2b;
-            color: #f8f8f2;
+            background-color: var(--code-bg);
+            color: var(--code-text);
             padding: 10px;
             border-radius: 5px;
             overflow-x: auto;
             font-family: 'Courier New', monospace;
         }
+        .header {
+            position: relative;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>SkCoder: Your Minecraft Skript Coder</h1>
-    <p><em>Ask me to code Skript for your Minecraft server! (e.g., "make a /home command" or "script for diamond sword damage")</em></p>
+    <div class="header">
+        <button id="dark-mode-toggle" onclick="toggleDarkMode()">Dark Mode</button>
+        <h1>SkCoder: Your Minecraft Skript Genius</h1>
+        <p><em>Ask me to code Skript for Minecraft! Try "kit command", "mob spawner", "block break event", or your own idea!</em></p>
+    </div>
     <div id="chat-container"></div>
     <input type="text" id="user-input" placeholder="Ask about Minecraft Skript...">
-    <button onclick="sendMessage()">Send</button>
+    <button id="send-button" onclick="sendMessage()">Send</button>
 
     <script>
+        // Toggle dark mode
+        function toggleDarkMode() {
+            const body = document.body;
+            const button = document.getElementById("dark-mode-toggle");
+            if (body.getAttribute("data-theme") === "dark") {
+                body.removeAttribute("data-theme");
+                button.textContent = "Dark Mode";
+            } else {
+                body.setAttribute("data-theme", "dark");
+                button.textContent = "Light Mode";
+            }
+        }
+
         // Minecraft Skript-focused responses for SkCoder
         const responses = {
-            // Greetings and redirects
-            "hello": "Hey, miner! I'm SkCoder, here to craft Skript code for your Minecraft server. What's your build idea?",
-            "how are you": "Energized like a charged creeper! Ready to script some Minecraft magic?",
-            "what is your name": "SkCoder, the block-breaking code wizard for Minecraft Skript.",
-            "bye": "Log off safely—don't forget to save your world! o/",
-            "default": "Whoa, that's not a Minecraft query. Tell me about Skript: e.g., 'create a /tp command' or 'effect for full armor set'.",
+            // General responses
+            "hello": "Yo, miner! SkCoder here, ready to craft some epic Minecraft Skripts. What's your server idea?",
+            "how are you": "Powered up like a redstone circuit! What's the next Minecraft Skript you need?",
+            "what is your name": "I'm SkCoder, your go-to for Minecraft Skript coding. Ask me about commands, events, or items!",
+            "bye": "Peace out—keep mining and coding! o/",
+            "default": "Hmm, let's stick to Minecraft Skript. Try 'kit command', 'mob spawner', or describe a feature!",
 
-            // Minecraft Skript examples
-            "make a /home command": "Sure! Here's a basic Skript for /sethome and /home commands. Save as home.sk in plugins/Skript/scripts/ and reload with /sk reload home.\n\npre {code: command /sethome:\n  permission: skript.home\n  trigger:\n    set {home::%uuid of player%} to location of player\n    message \"&aHome set at %location of player%!\" \n\ncommand /home:\n  permission: skript.home\n  trigger:\n    if {home::%uuid of player%} is set:\n      teleport player to {home::%uuid of player%}\n      message \"&aTeleported home!\"\n    else:\n      message \"&cNo home set yet! Use /sethome.\"}",
+            // Skript examples
+            "make a /home command": "Here's a Skript for /sethome and /home. Save as home.sk and reload with /sk reload home.\n\npre {code: command /sethome:\n  permission: skript.home\n  trigger:\n    set {home::%uuid of player%} to location of player\n    message \"&aHome set at %location of player%!\"\n\ncommand /home:\n  permission: skript.home\n  trigger:\n    if {home::%uuid of player%} is set:\n      teleport player to {home::%uuid of player%}\n      message \"&aTeleported home!\"\n    else:\n      message \"&cNo home set yet! Use /sethome.\"}",
 
-            "script for diamond sword damage": "Epic! This Skript boosts diamond sword damage by 5 hearts and adds a particle effect on hit. For Minecraft 1.21+.\n\npre {code: on damage:\n  if victim is a player:\n    if attacker's tool is a diamond sword:\n      add 10 to damage\n      show 5 of dust particle at victim with data 1\n      message \"&cSliced with diamond fury!\" to attacker}",
+            "script for diamond sword damage": "This Skript makes a diamond sword deal +5 hearts damage with a spark effect. For 1.21+.\n\npre {code: on damage:\n  if victim is a living entity:\n    if attacker's tool is a diamond sword:\n      add 10 to damage\n      show 10 of spark particle at victim\n      message \"&cCritical slash!\" to attacker}",
 
-            "effect for full armor set": "Armor up! This applies Speed II when wearing a full diamond set. Checks every 5 seconds.\n\npre {code: every 5 seconds:\n  loop all players:\n    if loop-player's helmet is diamond helmet and loop-player's chestplate is diamond chestplate and loop-player's leggings is diamond leggings and loop-player's boots is diamond boots:\n      apply speed 2 to loop-player for 10 seconds\n    else:\n      remove speed from loop-player}",
+            "effect for full armor set": "This applies Strength II when wearing full diamond armor, checked every 5 seconds.\n\npre {code: every 5 seconds:\n  loop all players:\n    if loop-player's helmet is diamond helmet and loop-player's chestplate is diamond chestplate and loop-player's leggings is diamond leggings and loop-player's boots is diamond boots:\n      apply strength 2 to loop-player for 10 seconds\n    else:\n      remove strength from loop-player}",
 
-            "welcome message on join": "Block party! Simple join message with a welcome broadcast.\n\npre {code: on join:\n  broadcast \"&e%player% joined the adventure!\" \n  message \"&aWelcome back to the server, %player%! Type /help for commands.\" to player}",
+            "welcome message on join": "Block party! A join message with a welcome broadcast.\n\npre {code: on join:\n  broadcast \"&e%player% joined the adventure!\"\n  message \"&aWelcome back, %player%! Type /help for commands.\" to player}",
 
-            "custom item like quake mace": "Smash! A Skript for a 'Quake Mace' (using iron mace) that deals 9 hearts damage and launches players. Rename to quake.sk.\n\npre {code: on rightclick with iron mace named \"&6Quake Mace\":\n  if player's tool has lore \"&7Smashes with earth power\":\n    damage attacker by 18 hearts\n    launch attacker upwards 2 blocks\n    play anvil land at attacker\n    message \"&cQuake smash!\" to attacker}",
+            "custom item like quake mace": "Smash! A Skript for a 'Quake Mace' (iron mace) dealing 9 hearts and launching players. Save as quake.sk.\n\npre {code: on rightclick with iron mace named \"&6Quake Mace\":\n  if player's tool has lore \"&7Smashes with earth power\":\n    damage attacker by 18 hearts\n    launch attacker upwards 2 blocks\n    play anvil land at attacker\n    message \"&cQuake smash!\" to attacker}",
 
-            // Fallback for other Minecraft-like queries
-            "help": "I'm all about Minecraft Skript! Try: '/home command', 'diamond sword script', 'full armor effect', or describe your idea."
+            "kit command": "Here's a Skript for a /kit starter command with a 24-hour cooldown.\n\npre {code: command /kit [<text>]:\n  trigger:\n    if arg-1 is \"starter\":\n      if {kit.starter::%uuid of player%::cooldown} is not set or {kit.starter::%uuid of player%::cooldown} is less than now:\n        give player iron sword, iron pickaxe, 16 oak logs, and 32 bread\n        message \"&aEnjoy your starter kit!\"\n        set {kit.starter::%uuid of player%::cooldown} to now + 24 hours\n      else:\n        message \"&cWait %difference between now and {kit.starter::%uuid of player%::cooldown}%!\"\n    else:\n      message \"&cUse /kit starter\"}",
+
+            "mob spawner": "This Skript spawns 3 zombies near a player when they break a spawner. Save as spawner.sk.\n\npre {code: on break of spawner:\n  spawn 3 zombies at block's location\n  message \"&cYou broke a spawner! Zombies incoming!\"\n  play sound \"entity.zombie.ambient\" at block's location}",
+
+            "block break event": "This gives a 10% chance to drop a diamond when breaking stone.\n\npre {code: on break of stone:\n  if random number between 1 and 100 <= 10:\n    drop 1 diamond at block's location\n    message \"&bLucky! You found a diamond!\"}",
+
+            "help": "I'm SkCoder, your Minecraft Skript coder! Try: 'kit command', 'mob spawner', 'block break event', or your own idea."
         };
 
         function sendMessage() {
@@ -88,7 +152,7 @@
             userMessage.innerHTML = `<strong>You:</strong> ${input}`;
             chatContainer.appendChild(userMessage);
 
-            // Get SkCoder's response (fuzzy match for better UX)
+            // Get SkCoder's response (fuzzy match)
             let aiResponse = responses["default"];
             for (let key in responses) {
                 if (input.includes(key.split(" ")[0]) || key.includes(input.split(" ")[0])) {
